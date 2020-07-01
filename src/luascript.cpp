@@ -174,30 +174,8 @@ uint32_t ScriptEnvironment::addThing(Thing* thing)
 	}
 
 	Item* item = thing->getItem();
-	if (item) {
-		uint16_t uid = item->getUniqueId();
-		if (uid > 0) {
-			bool isOnTile = false;
-
-			const Cylinder* parent = item->getParent();
-			if (item->getTile() == parent) {
-				isOnTile = true;
-			} else if (parent) {
-				const Container* parentContainer = parent->getContainer();
-				if (parentContainer && parentContainer->getID() == ITEM_BROWSEFIELD) {
-					isOnTile = true;
-				}
-			}
-
-			if (isOnTile) {
-				if (m_localMap.find(uid) != m_localMap.end()) {
-					return uid;
-				}
-
-				m_localMap[uid] = thing;
-				return uid;
-			}
-		}
+	if (item && item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
+		return item->getUniqueId();
 	}
 
 	for (const auto& it : m_localMap) {
@@ -2329,7 +2307,6 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("Player", "getContainerId", LuaScriptInterface::luaPlayerGetContainerId);
 	registerMethod("Player", "getContainerById", LuaScriptInterface::luaPlayerGetContainerById);
-	registerMethod("Player", "getContainerIndex", LuaScriptInterface::luaPlayerGetContainerIndex);
 
 	// Monster
 	registerClass("Monster", "Creature", LuaScriptInterface::luaMonsterCreate);
@@ -9669,18 +9646,6 @@ int32_t LuaScriptInterface::luaPlayerGetContainerById(lua_State* L)
 	if (container) {
 		pushUserdata<Container>(L, container);
 		setMetatable(L, -1, "Container");
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int32_t LuaScriptInterface::luaPlayerGetContainerIndex(lua_State* L)
-{
-	// player:getContainerIndex(id)
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getContainerIndex(getNumber<uint8_t>(L, 2)));
 	} else {
 		lua_pushnil(L);
 	}

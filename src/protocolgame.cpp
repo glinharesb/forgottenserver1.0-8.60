@@ -524,8 +524,6 @@ void ProtocolGame::parsePacket(NetworkMessage& msg)
 		case 0xBE: addGameTask(&Game::playerCancelAttackAndFollow, player->getID()); break;
 		case 0xC9: /* update tile */ break;
 		case 0xCA: parseUpdateContainer(msg); break;
-		case 0xCB: parseBrowseField(msg); break;
-		case 0xCC: parseSeekInContainer(msg); break;
 		case 0xD2: addGameTask(&Game::playerRequestOutfit, player->getID()); break;
 		case 0xD3: parseSetOutfit(msg); break;
 		case 0xD4: parseToggleMount(msg); break;
@@ -1165,19 +1163,6 @@ void ProtocolGame::parseModalWindowAnswer(NetworkMessage& msg)
 	addGameTask(&Game::playerAnswerModalWindow, player->getID(), id, button, choice);
 }
 
-void ProtocolGame::parseBrowseField(NetworkMessage& msg)
-{
-	const Position& pos = msg.GetPosition();
-	addGameTask(&Game::playerBrowseField, player->getID(), pos);
-}
-
-void ProtocolGame::parseSeekInContainer(NetworkMessage& msg)
-{
-	uint8_t containerId = msg.GetByte();
-	uint16_t index = msg.get<uint16_t>();
-	addGameTask(&Game::playerSeekInContainer, player->getID(), containerId, index);
-}
-
 //********************** Send methods *******************************//
 void ProtocolGame::sendOpenPrivateChannel(const std::string& receiver)
 {
@@ -1463,49 +1448,27 @@ void ProtocolGame::sendIcons(uint16_t icons)
 	writeToOutputBuffer(msg);
 }
 
-void ProtocolGame::sendContainer(uint8_t cid, const Container* container, bool hasParent, uint16_t firstIndex)
+void ProtocolGame::sendContainer(uint8_t cid, const Container* container, bool hasParent)
 {
 	NetworkMessage msg;
 	msg.AddByte(0x6E);
 
 	msg.AddByte(cid);
 
-	if (container->getID() == ITEM_BROWSEFIELD) {
-		msg.AddItem(1987, 1);
-		msg.AddString("Browse Field");
-	} else {
-		msg.AddItem(container);
-		msg.AddString(container->getName());
-	}
+	msg.AddItem(container);
+	msg.AddString(container->getName());
 
 	msg.AddByte(container->capacity());
 
 	msg.AddByte(hasParent ? 0x01 : 0x00);
 
-	msg.AddByte(container->isUnlocked() ? 0x01 : 0x00); // Drag and drop
-	msg.AddByte(container->hasPagination() ? 0x01 : 0x00); // Pagination
-
-	uint32_t containerSize = container->size();
-	msg.add<uint16_t>(containerSize);
-	msg.add<uint16_t>(firstIndex);
-
 	uint32_t maxItemsToSend;
-	if (container->hasPagination() && firstIndex > 0) {
-		maxItemsToSend = std::min<uint32_t>(container->capacity(), containerSize - firstIndex);
-	} else {
-		maxItemsToSend = container->capacity();
-	}
+	msg.AddByte(std::min<uint32_t>(maxItemsToSend, container->size()));
 
-	if (firstIndex >= containerSize) {
-		msg.AddByte(0x00);
-	} else {
-		msg.AddByte(std::min<uint32_t>(maxItemsToSend, containerSize));
-
-		uint32_t i = 0;
-		const ItemDeque& itemList = container->getItemList();
-		for (ItemDeque::const_iterator it = itemList.begin() + firstIndex, end = itemList.end(); i < maxItemsToSend && it != end; ++it, ++i) {
-			msg.AddItem(*it);
-		}
+	uint32_t i = 0;
+	const ItemDeque& itemList = container->getItemList();
+	for (ItemDeque::const_iterator it = itemList.begin(), end = itemList.end(); i < maxItemsToSend && it != end; ++it, ++i) {
+		msg.AddItem(*it);
 	}
 	writeToOutputBuffer(msg);
 }
@@ -2597,37 +2560,31 @@ void ProtocolGame::sendInventoryItem(slots_t slot, const Item* item)
 	writeToOutputBuffer(msg);
 }
 
-void ProtocolGame::sendAddContainerItem(uint8_t cid, uint16_t slot, const Item* item)
+void ProtocolGame::sendAddContainerItem(uint8_t cid, const Item* item)
 {
 	NetworkMessage msg;
 	msg.AddByte(0x70);
 	msg.AddByte(cid);
-	msg.add<uint16_t>(slot);
 	msg.AddItem(item);
 	writeToOutputBuffer(msg);
 }
 
-void ProtocolGame::sendUpdateContainerItem(uint8_t cid, uint16_t slot, const Item* item)
+void ProtocolGame::sendUpdateContainerItem(uint8_t cid, uint8_t slot, const Item* item)
 {
 	NetworkMessage msg;
 	msg.AddByte(0x71);
 	msg.AddByte(cid);
-	msg.add<uint16_t>(slot);
+	msg.AddByte(slot);
 	msg.AddItem(item);
 	writeToOutputBuffer(msg);
 }
 
-void ProtocolGame::sendRemoveContainerItem(uint8_t cid, uint16_t slot, const Item* lastItem)
+void ProtocolGame::sendRemoveContainerItem(uint8_t cid, uint8_t slot)
 {
 	NetworkMessage msg;
 	msg.AddByte(0x72);
 	msg.AddByte(cid);
-	msg.add<uint16_t>(slot);
-	if (lastItem) {
-		msg.AddItem(lastItem);
-	} else {
-		msg.add<uint16_t>(0x00);
-	}
+	msg.AddByte(slot);
 	writeToOutputBuffer(msg);
 }
 

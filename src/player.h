@@ -108,7 +108,6 @@ struct VIPEntry {
 
 struct OpenContainer {
 	Container* container;
-	uint16_t index;
 };
 
 struct OutfitEntry {
@@ -355,11 +354,9 @@ class Player : public Creature, public Cylinder
 
 		void addContainer(uint8_t cid, Container* container);
 		void closeContainer(uint8_t cid);
-		void setContainerIndex(uint8_t cid, uint16_t index);
 
 		Container* getContainerByID(uint8_t cid);
 		int8_t getContainerID(const Container* container) const;
-		uint16_t getContainerIndex(uint8_t cid) const;
 
 		bool canOpenCorpse(uint32_t ownerId) const;
 
@@ -847,11 +844,11 @@ class Player : public Creature, public Cylinder
 
 		//container
 		void sendAddContainerItem(const Container* container, const Item* item);
-		void sendUpdateContainerItem(const Container* container, uint16_t slot, const Item* newItem);
-		void sendRemoveContainerItem(const Container* container, uint16_t slot);
-		void sendContainer(uint8_t cid, const Container* container, bool hasParent, uint16_t firstIndex) {
+		void sendUpdateContainerItem(const Container* container, uint8_t slot, const Item* newItem);
+		void sendRemoveContainerItem(const Container* container, uint8_t slot);
+		void sendContainer(uint8_t cid, const Container* container, bool hasParent) {
 			if (client) {
-				client->sendContainer(cid, container, hasParent, firstIndex);
+				client->sendContainer(cid, container, hasParent);
 			}
 		}
 

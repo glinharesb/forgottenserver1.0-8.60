@@ -709,24 +709,14 @@ void Player::addContainer(uint8_t cid, Container* container)
 		return;
 	}
 
-	if (container->getID() == ITEM_BROWSEFIELD) {
-		container->useThing2();
-	}
-
 	auto it = openContainers.find(cid);
 	if (it != openContainers.end()) {
 		OpenContainer& openContainer = it->second;
-		Container* oldContainer = openContainer.container;
-		if (oldContainer->getID() == ITEM_BROWSEFIELD) {
-			oldContainer->releaseThing2();
-		}
 
 		openContainer.container = container;
-		openContainer.index = 0;
 	} else {
 		OpenContainer openContainer;
 		openContainer.container = container;
-		openContainer.index = 0;
 		openContainers[cid] = openContainer;
 	}
 }
@@ -738,22 +728,7 @@ void Player::closeContainer(uint8_t cid)
 		return;
 	}
 
-	OpenContainer openContainer = it->second;
-	Container* container = openContainer.container;
 	openContainers.erase(it);
-
-	if (container && container->getID() == ITEM_BROWSEFIELD) {
-		container->releaseThing2();
-	}
-}
-
-void Player::setContainerIndex(uint8_t cid, uint16_t index)
-{
-	auto it = openContainers.find(cid);
-	if (it == openContainers.end()) {
-		return;
-	}
-	it->second.index = index;
 }
 
 Container* Player::getContainerByID(uint8_t cid)
@@ -773,15 +748,6 @@ int8_t Player::getContainerID(const Container* container) const
 		}
 	}
 	return -1;
-}
-
-uint16_t Player::getContainerIndex(uint8_t cid) const
-{
-	auto it = openContainers.find(cid);
-	if (it == openContainers.end()) {
-		return 0;
-	}
-	return it->second.index;
 }
 
 bool Player::canOpenCorpse(uint32_t ownerId) const
@@ -1158,26 +1124,11 @@ void Player::sendAddContainerItem(const Container* container, const Item* item)
 			continue;
 		}
 
-		uint16_t slot = openContainer.index;
-
-		if (container->getID() == ITEM_BROWSEFIELD) {
-			uint16_t containerSize = container->size() - 1;
-			uint16_t pageEnd = openContainer.index + container->capacity();
-			if (containerSize > pageEnd) {
-				slot = pageEnd;
-				item = container->getItemByIndex(pageEnd);
-			} else {
-				slot = containerSize;
-			}
-		} else if (openContainer.index >= container->capacity()) {
-			item = container->getItemByIndex(openContainer.index - 1);
-		}
-
-		client->sendAddContainerItem(it.first, slot, item);
+		client->sendAddContainerItem(it.first, item);
 	}
 }
 
-void Player::sendUpdateContainerItem(const Container* container, uint16_t slot, const Item* newItem)
+void Player::sendUpdateContainerItem(const Container* container, uint8_t slot, const Item* newItem)
 {
 	if (!client) {
 		return;
@@ -1189,20 +1140,11 @@ void Player::sendUpdateContainerItem(const Container* container, uint16_t slot, 
 			continue;
 		}
 
-		if (slot < openContainer.index) {
-			continue;
-		}
-
-		uint16_t pageEnd = openContainer.index + container->capacity();
-		if (slot >= pageEnd) {
-			continue;
-		}
-
 		client->sendUpdateContainerItem(it.first, slot, newItem);
 	}
 }
 
-void Player::sendRemoveContainerItem(const Container* container, uint16_t slot)
+void Player::sendRemoveContainerItem(const Container* container, uint8_t slot)
 {
 	if (!client) {
 		return;
@@ -1214,13 +1156,7 @@ void Player::sendRemoveContainerItem(const Container* container, uint16_t slot)
 			continue;
 		}
 
-		uint16_t& firstIndex = openContainer.index;
-		if (firstIndex > 0 && firstIndex >= container->size() - 1) {
-			firstIndex -= container->capacity();
-			sendContainer(it.first, container, false, firstIndex);
-		}
-
-		client->sendRemoveContainerItem(it.first, std::max<uint16_t>(slot, firstIndex), container->getItemByIndex(container->capacity() + firstIndex));
+		client->sendRemoveContainerItem(it.first, slot);
 	}
 }
 
@@ -1549,7 +1485,7 @@ void Player::onSendContainer(const Container* container)
 	for (const auto& it : openContainers) {
 		const OpenContainer& openContainer = it.second;
 		if (openContainer.container == container) {
-			client->sendContainer(it.first, container, hasParent, openContainer.index);
+			client->sendContainer(it.first, container, hasParent);
 		}
 	}
 }

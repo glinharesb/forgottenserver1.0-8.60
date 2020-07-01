@@ -152,9 +152,6 @@ class ProtocolGame : public Protocol
 
 		void parseModalWindowAnswer(NetworkMessage& msg);
 
-		void parseBrowseField(NetworkMessage& msg);
-		void parseSeekInContainer(NetworkMessage& msg);
-
 		//trade methods
 		void parseRequestTrade(NetworkMessage& msg);
 		void parseLookInTrade(NetworkMessage& msg);
@@ -271,11 +268,11 @@ class ProtocolGame : public Protocol
 		                      const Position& oldPos, int32_t oldStackPos, bool teleport);
 
 		//containers
-		void sendAddContainerItem(uint8_t cid, uint16_t slot, const Item* item);
-		void sendUpdateContainerItem(uint8_t cid, uint16_t slot, const Item* item);
-		void sendRemoveContainerItem(uint8_t cid, uint16_t slot, const Item* lastItem);
+		void sendAddContainerItem(uint8_t cid, const Item* item);
+		void sendUpdateContainerItem(uint8_t cid, uint8_t slot, const Item* item);
+		void sendRemoveContainerItem(uint8_t cid, uint8_t slot);
 
-		void sendContainer(uint8_t cid, const Container* container, bool hasParent, uint16_t firstIndex);
+		void sendContainer(uint8_t cid, const Container* container, bool hasParent);
 		void sendCloseContainer(uint8_t cid);
 
 		//inventory
